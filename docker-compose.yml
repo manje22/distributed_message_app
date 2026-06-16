@@ -6,6 +6,8 @@ services:
       - "9042:9042"
     environment:
       - CASSANDRA_CLUSTER_NAME=ChatCluster
+    volumes:
+      - cassandra1_data:/var/lib/cassandra
 
   cassandra2:
     image: cassandra:4.1
@@ -13,6 +15,8 @@ services:
     environment:
       - CASSANDRA_CLUSTER_NAME=ChatCluster
       - CASSANDRA_SEEDS=cassandra1
+    volumes:
+      - cassandra2_data:/var/lib/cassandra
 
   cassandra3:
     image: cassandra:4.1
@@ -20,3 +24,10 @@ services:
     environment:
       - CASSANDRA_CLUSTER_NAME=ChatCluster
       - CASSANDRA_SEEDS=cassandra1
+    volumes:
+      - cassandra3_data:/var/lib/cassandra
+
+volumes:
+  cassandra1_data:
+  cassandra2_data:
+  cassandra3_data:

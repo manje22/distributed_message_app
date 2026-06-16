@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chat Test</title>
+</head>
+<body>
+
+<input id="conversation" placeholder="Conversation ID">
+<button onclick="joinRoom()">Join</button>
+
+<ul id="messages"></ul>
+
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+<script>
+const socket = io("http://localhost:3000");
+
+function joinRoom() {
+    const conversationId =
+        document.getElementById("conversation").value;
+
+    socket.emit("joinConversation", conversationId);
+}
+
+socket.on("newMessage", (message) => {
+    const li = document.createElement("li");
+    li.textContent =
+        `${message.sender_id}: ${message.message_text}`;
+
+    document
+        .getElementById("messages")
+        .appendChild(li);
+});
+</script>
+
+</body>
+</html>
