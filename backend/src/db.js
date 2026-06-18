@@ -12,8 +12,18 @@ async function connectToDatabase() {
   console.log("Connected to Cassandra");
 }
 
+function getConsistencyLevel() {
+  const level = process.env.CASSANDRA_CONSISTENCY || "one";
+
+  console.log("Using consistency level:", level);
+  console.log("Driver value:", cassandra.types.consistencies[level]);
+
+  return cassandra.types.consistencies[level];
+}
+
 module.exports = {
   client,
   connectToDatabase,
   cassandra,
+  getConsistencyLevel,
 };

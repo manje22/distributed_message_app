@@ -7,7 +7,7 @@ const app = express();
 const server = http.createServer(app);
 
 const cors = require("cors");
-const { client, connectToDatabase, cassandra } = require("./db");
+const { client, connectToDatabase, cassandra, getConsistencyLevel } = require("./db");
 
 app.use(cors());
 app.use(express.json());
@@ -52,7 +52,7 @@ app.post("/users", async (req, res) => {
     await client.execute(
       "INSERT INTO users (user_id, username, created_at) VALUES (?, ?, ?)",
       [userId, username, createdAt],
-      { prepare: true }
+      { prepare: true, consistency: getConsistencyLevel() }
     );
 
     res.status(201).json({
@@ -83,7 +83,7 @@ app.post("/conversations", async (req, res) => {
     await client.execute(
       "INSERT INTO conversations (conversation_id, participant_ids, created_at) VALUES (?, ?, ?)",
       [conversationId, participants, createdAt],
-      { prepare: true }
+      { prepare: true, consistency: getConsistencyLevel() }
     );
 
     res.status(201).json({
@@ -113,10 +113,13 @@ app.post("/messages", async (req, res) => {
 
     await client.execute(
       `INSERT INTO messages_by_conversation 
-       (conversation_id, message_time, message_id, sender_id, message_text)
-       VALUES (?, ?, ?, ?, ?)`,
+      (conversation_id, message_time, message_id, sender_id, message_text)
+      VALUES (?, ?, ?, ?, ?)`,
       [conversationId, messageTime, messageId, senderId, message_text],
-      { prepare: true }
+      {
+        prepare: true,
+        consistency: getConsistencyLevel()
+      }
     );
 
     const messageResponse = {
@@ -147,7 +150,7 @@ app.get("/conversations/:id/messages", async (req, res) => {
        FROM messages_by_conversation
        WHERE conversation_id = ?`,
       [conversationId],
-      { prepare: true }
+      { prepare: true, consistency: getConsistencyLevel() }
     );
 
     res.json(
