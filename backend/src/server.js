@@ -7,9 +7,18 @@ const app = express();
 const server = http.createServer(app);
 
 const cors = require("cors");
-const { client, connectToDatabase, cassandra, getConsistencyLevel } = require("./db");
+const {
+  client,
+  connectToDatabase,
+  cassandra,
+  getConsistencyLevel,
+  getConsistencyName,
+  setConsistencyLevel,
+} = require("./db");
 
 const bcrypt = require("bcrypt");
+
+const { exec } = require("child_process");
 
 app.use(cors());
 app.use(express.json());
@@ -26,9 +35,7 @@ io.on("connection", (socket) => {
   socket.on("joinConversation", (conversationId) => {
     socket.join(conversationId);
 
-    console.log(
-      `${socket.id} joined conversation ${conversationId}`
-    );
+    console.log(`${socket.id} joined conversation ${conversationId}`);
   });
 
   socket.on("disconnect", () => {
@@ -93,20 +100,22 @@ app.post("/conversations", async (req, res) => {
     const { participant_ids } = req.body;
 
     if (!participant_ids || !Array.isArray(participant_ids)) {
-      return res.status(400).json({ error: "participant_ids array is required" });
+      return res
+        .status(400)
+        .json({ error: "participant_ids array is required" });
     }
 
     const conversationId = cassandra.types.Uuid.random();
     const createdAt = new Date();
 
     const participants = participant_ids.map((id) =>
-      cassandra.types.Uuid.fromString(id)
+      cassandra.types.Uuid.fromString(id),
     );
 
     await client.execute(
       "INSERT INTO conversations (conversation_id, participant_ids, created_at) VALUES (?, ?, ?)",
       [conversationId, participants, createdAt],
-      { prepare: true, consistency: getConsistencyLevel() }
+      { prepare: true, consistency: getConsistencyLevel() },
     );
 
     res.status(201).json({
@@ -141,16 +150,29 @@ app.post("/messages", async (req, res) => {
       [conversationId, messageTime, messageId, senderId, message_text],
       {
         prepare: true,
-        consistency: getConsistencyLevel()
-      }
+        consistency: getConsistencyLevel(),
+      },
     );
 
+    await client.execute(
+      `INSERT INTO messages_by_user
+   (sender_id, message_time, message_id, conversation_id, message_text)
+   VALUES (?, ?, ?, ?, ?)`,
+      [senderId, messageTime, messageId, conversationId, message_text],
+      {
+        prepare: true,
+        consistency: getConsistencyLevel(),
+      },
+    );
+
+    console.log("Inserted into messages_by_user");
+
     const messageResponse = {
-        conversation_id,
-        message_id: messageId.toString(),
-        sender_id,
-        message_text,
-        message_time: messageTime,
+      conversation_id,
+      message_id: messageId.toString(),
+      sender_id,
+      message_text,
+      message_time: messageTime,
     };
 
     console.log("Emitting newMessage to room:", conversation_id);
@@ -173,7 +195,7 @@ app.get("/conversations/:id/messages", async (req, res) => {
        FROM messages_by_conversation
        WHERE conversation_id = ?`,
       [conversationId],
-      { prepare: true, consistency: getConsistencyLevel() }
+      { prepare: true, consistency: getConsistencyLevel() },
     );
 
     res.json(
@@ -182,6 +204,35 @@ app.get("/conversations/:id/messages", async (req, res) => {
         message_time: row.message_time,
         message_id: row.message_id.toString(),
         sender_id: row.sender_id.toString(),
+        message_text: row.message_text,
+      })),
+    );
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/users/:id/messages", async (req, res) => {
+  try {
+    const senderId = cassandra.types.Uuid.fromString(req.params.id);
+
+    const result = await client.execute(
+      `SELECT sender_id, message_time, message_id, conversation_id, message_text
+       FROM messages_by_user
+       WHERE sender_id = ?`,
+      [senderId],
+      {
+        prepare: true,
+        consistency: getConsistencyLevel(),
+      }
+    );
+
+    res.json(
+      result.rows.map((row) => ({
+        sender_id: row.sender_id.toString(),
+        message_time: row.message_time,
+        message_id: row.message_id.toString(),
+        conversation_id: row.conversation_id.toString(),
         message_text: row.message_text,
       }))
     );
@@ -266,12 +317,71 @@ app.post("/login", async (req, res) => {
   }
 });
 
+app.get("/cluster/status", async (req, res) => {
+  exec("docker exec cassandra1 nodetool status", (error, stdout, stderr) => {
+    if (error) {
+      return res.status(500).json({
+        error: error.message,
+      });
+    }
+
+    const nodes = [];
+
+    const lines = stdout.split("\n");
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+
+      if (
+        trimmed.startsWith("UN") ||
+        trimmed.startsWith("DN") ||
+        trimmed.startsWith("UJ")
+      ) {
+        const parts = trimmed.split(/\s+/);
+
+        nodes.push({
+          status: parts[0],
+          address: parts[1],
+        });
+      }
+    }
+
+    res.json({
+      nodes,
+    });
+  });
+});
+
+app.get("/settings/consistency", (req, res) => {
+  res.json({
+    consistency: getConsistencyName(),
+  });
+});
+
+app.post("/settings/consistency", (req, res) => {
+  const { consistency } = req.body;
+
+  if (!["one", "quorum"].includes(consistency)) {
+    return res.status(400).json({
+      error: "Consistency must be 'one' or 'quorum'",
+    });
+  }
+
+  setConsistencyLevel(consistency);
+
+  res.json({
+    consistency: getConsistencyName(),
+  });
+
+  console.log("Consistency changed to:", getConsistencyName());
+});
+
 const PORT = process.env.PORT || 3000;
 
 connectToDatabase()
   .then(() => {
     server.listen(PORT, () => {
-        console.log(`Server running on port ${PORT}`);
+      console.log(`Server running on port ${PORT}`);
     });
   })
   .catch((error) => {

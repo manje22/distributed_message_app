@@ -7,18 +7,29 @@ const client = new cassandra.Client({
   keyspace: process.env.CASSANDRA_KEYSPACE,
 });
 
+let currentConsistency = process.env.CASSANDRA_CONSISTENCY || "one";
+
 async function connectToDatabase() {
   await client.connect();
   console.log("Connected to Cassandra");
 }
 
 function getConsistencyLevel() {
-  const level = process.env.CASSANDRA_CONSISTENCY || "one";
+  console.log("Using consistency level:", currentConsistency);
+  console.log(
+    "Driver value:",
+    cassandra.types.consistencies[currentConsistency],
+  );
 
-  console.log("Using consistency level:", level);
-  console.log("Driver value:", cassandra.types.consistencies[level]);
+  return cassandra.types.consistencies[currentConsistency];
+}
 
-  return cassandra.types.consistencies[level];
+function getConsistencyName() {
+  return currentConsistency;
+}
+
+function setConsistencyLevel(level) {
+  currentConsistency = level;
 }
 
 module.exports = {
@@ -26,4 +37,6 @@ module.exports = {
   connectToDatabase,
   cassandra,
   getConsistencyLevel,
+  getConsistencyName,
+  setConsistencyLevel,
 };

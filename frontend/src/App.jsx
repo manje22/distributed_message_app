@@ -3,6 +3,7 @@ import axios from "axios";
 import { io } from "socket.io-client";
 import "./App.css";
 import AuthPage from "./AuthPage";
+import DatabaseDashboard from "./DatabaseDashboard";
 
 const API_URL = import.meta.env.VITE_API_URL;
 const socket = io(API_URL);
@@ -25,6 +26,8 @@ function App() {
 
   const [users, setUsers] = useState([]);
   const [conversations, setConversations] = useState([]);
+
+  const [currentPage, setCurrentPage] = useState("chat");
 
   function getUsernameById(id) {
     const user = users.find((u) => u.user_id === id);
@@ -215,6 +218,10 @@ function App() {
     );
   }
 
+  if (currentPage === "dashboard") {
+    return <DatabaseDashboard onBack={() => setCurrentPage("chat")} />;
+  }
+
   return (
     <div className="layout">
       <aside className="sidebar">
@@ -241,6 +248,10 @@ function App() {
             Logged in as <strong>{username}</strong>{" "}
             <button onClick={logout}>Logout</button>
           </p>
+
+          <button onClick={() => setCurrentPage("dashboard")}>
+            Database Dashboard
+          </button>
 
           <section>
             <h2>Create Conversation</h2>
