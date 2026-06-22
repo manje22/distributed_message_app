@@ -1,0 +1,77 @@
+.app {
+  max-width: 800px;
+  margin: 40px auto;
+  font-family: Arial, sans-serif;
+}
+
+section {
+  border: 1px solid #ddd;
+  padding: 16px;
+  margin-bottom: 16px;
+  border-radius: 8px;
+}
+
+input {
+  padding: 8px;
+  margin-right: 8px;
+  width: 300px;
+}
+
+button {
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.status {
+  color: green;
+  font-weight: bold;
+}
+
+.messages {
+  border: 1px solid #ddd;
+  min-height: 200px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.message {
+  border-bottom: 1px solid #eee;
+  padding: 8px 0;
+}
+
+.message p {
+  margin: 4px 0;
+}
+
+.send-box {
+  display: flex;
+  gap: 8px;
+}
+
+.send-box input {
+  flex: 1;
+}
+
+.layout {
+  display: flex;
+  gap: 20px;
+}
+
+.sidebar {
+  width: 260px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 16px;
+  height: fit-content;
+}
+
+.main {
+  flex: 1;
+}
+
+.conversation-button {
+  display: block;
+  width: 100%;
+  margin-bottom: 8px;
+  text-align: left;
+}

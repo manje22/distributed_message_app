@@ -9,6 +9,8 @@ const server = http.createServer(app);
 const cors = require("cors");
 const { client, connectToDatabase, cassandra, getConsistencyLevel } = require("./db");
 
+const bcrypt = require("bcrypt");
+
 app.use(cors());
 app.use(express.json());
 
@@ -40,19 +42,40 @@ app.get("/", (req, res) => {
 
 app.post("/users", async (req, res) => {
   try {
-    const { username } = req.body;
+    const { username, password } = req.body;
 
-    if (!username) {
-      return res.status(400).json({ error: "username is required" });
+    if (!username || !password) {
+      return res.status(400).json({
+        error: "username and password are required",
+      });
+    }
+
+    const existingUser = await client.execute(
+      "SELECT username FROM users_by_username WHERE username = ?",
+      [username],
+      { prepare: true, consistency: getConsistencyLevel() },
+    );
+
+    if (existingUser.rows.length > 0) {
+      return res.status(409).json({
+        error: "Username already exists",
+      });
     }
 
     const userId = cassandra.types.Uuid.random();
     const createdAt = new Date();
+    const passwordHash = await bcrypt.hash(password, 10);
 
     await client.execute(
       "INSERT INTO users (user_id, username, created_at) VALUES (?, ?, ?)",
       [userId, username, createdAt],
-      { prepare: true, consistency: getConsistencyLevel() }
+      { prepare: true, consistency: getConsistencyLevel() },
+    );
+
+    await client.execute(
+      "INSERT INTO users_by_username (username, user_id, password_hash, created_at) VALUES (?, ?, ?, ?)",
+      [username, userId, passwordHash, createdAt],
+      { prepare: true, consistency: getConsistencyLevel() },
     );
 
     res.status(201).json({
@@ -169,11 +192,15 @@ app.get("/conversations/:id/messages", async (req, res) => {
 
 app.get("/users", async (req, res) => {
   try {
-    const result = await client.execute(
-      "SELECT * FROM users"
-    );
+    const result = await client.execute("SELECT * FROM users");
 
-    res.json(result.rows);
+    res.json(
+      result.rows.map((row) => ({
+        user_id: row.user_id.toString(),
+        username: row.username,
+        created_at: row.created_at,
+      })),
+    );
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -181,12 +208,60 @@ app.get("/users", async (req, res) => {
 
 app.get("/conversations", async (req, res) => {
   try {
+    const result = await client.execute("SELECT * FROM conversations");
+
+    res.json(
+      result.rows.map((row) => ({
+        conversation_id: row.conversation_id.toString(),
+        participant_ids: Array.from(row.participant_ids).map((id) =>
+          id.toString(),
+        ),
+        created_at: row.created_at,
+      })),
+    );
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/login", async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({
+        error: "username and password are required",
+      });
+    }
+
     const result = await client.execute(
-      "SELECT * FROM conversations"
+      "SELECT username, user_id, password_hash, created_at FROM users_by_username WHERE username = ?",
+      [username],
+      { prepare: true, consistency: getConsistencyLevel() },
     );
 
-    res.json(result.rows);
-    } catch (error) {
+    if (result.rows.length === 0) {
+      return res.status(401).json({
+        error: "Invalid username or password",
+      });
+    }
+
+    const user = result.rows[0];
+
+    const passwordMatches = await bcrypt.compare(password, user.password_hash);
+
+    if (!passwordMatches) {
+      return res.status(401).json({
+        error: "Invalid username or password",
+      });
+    }
+
+    res.json({
+      user_id: user.user_id.toString(),
+      username: user.username,
+      created_at: user.created_at,
+    });
+  } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
