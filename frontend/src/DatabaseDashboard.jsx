@@ -73,7 +73,7 @@ function DatabaseDashboard({ onBack }) {
           <div className="node-list">
             {clusterNodes.map((node) => (
               <div key={node.address} className="node-item">
-                {node.status === "UN" ? "🟢" : "🔴"} {node.address} (
+                {node.address} (
                 {node.status})
               </div>
             ))}
@@ -140,31 +140,6 @@ function DatabaseDashboard({ onBack }) {
               </div>
             ))}
           </div>
-        </section>
-
-        <section className="dashboard-card">
-          <h2>Database Statistics</h2>
-          <p>Users, conversations, and message counts.</p>
-
-          <div className="stats">
-            <div>Users: —</div>
-            <div>Conversations: —</div>
-            <div>Messages: —</div>
-          </div>
-        </section>
-
-        <section className="dashboard-card">
-          <h2>Message Distribution</h2>
-          <p>Shows which Cassandra coordinator handled writes.</p>
-
-          <p className="placeholder">Coming soon</p>
-        </section>
-
-        <section className="dashboard-card">
-          <h2>Event Log</h2>
-          <p>Shows recent backend/database events.</p>
-
-          <p className="placeholder">Coming soon</p>
         </section>
       </div>
     </div>

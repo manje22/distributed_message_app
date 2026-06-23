@@ -33,3 +33,10 @@ CREATE TABLE IF NOT EXISTS messages_by_conversation (
   message_text text,
   PRIMARY KEY (conversation_id, message_time, message_id)
 ) WITH CLUSTERING ORDER BY (message_time ASC);
+
+
+#DRUGE KORISNE NAREDBE
+- DESCRIBE KEYSPACES;
+- DESCRIBE TABLES
+- SELECT * FROM users/conversations...
+- docker exec -it cassandra1 nodetool status - za vidit stanje svih nodeova
