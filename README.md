@@ -5,9 +5,13 @@ Za pokrenuti projekt potrebno je izvrsiti iduce naredbe u danom redoslijedu
 2. docker cp schema.cql cassandra1:/schema.cql
 4. Za import podataka u powershell:
     docker cp ./data/users.csv cassandra1:/tmp/users.csv
+
     docker cp ./data/users_by_username.csv cassandra1:/tmp/users_by_username.csv
+
     docker cp ./data/conversations.csv cassandra1:/tmp/conversations.csv
+
     docker cp ./data/messages_by_conversation.csv cassandra1:/tmp/messages_by_conversation.csv
+    
     docker cp ./data/messages_by_user.csv cassandra1:/tmp/messages_by_user.csv
 
 5. docker exec -it cassandra1 cqlsh
