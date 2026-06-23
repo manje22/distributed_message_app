@@ -8,7 +8,7 @@ USE chat_app;
 
 CREATE TABLE IF NOT EXISTS users (
     user_id UUID PRIMARY KEY,
-    username TEST,
+    username TEXT,
     created_at TIMESTAMP
 );
 
